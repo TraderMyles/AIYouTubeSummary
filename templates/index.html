@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcript Summarizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        #response-display {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 300px; /* Limit height */
+            overflow-y: auto; /* Add scrolling for overflow */
+            background: #f9f9f9;
+            white-space: pre-wrap; /* Preserve line breaks */
+        }
+        #response-display.error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>YouTube Transcript Summarizer</h1>
+    <form id="url-form">
+        <label for="video-url">Enter YouTube URL:</label>
+        <input type="text" id="video-url" name="video_url" required>
+        <button type="submit">Summarize</button>
+    </form>
+    <p id="video-id-display"></p>
+    <div id="response-display"></div>
+    <script>
+        document.getElementById('url-form').addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent form submission
+            const url = document.getElementById('video-url').value;
+
+            let videoId = null;
+
+            try {
+                const parsedUrl = new URL(url);
+
+                if (parsedUrl.hostname === 'www.youtube.com' || parsedUrl.hostname === 'youtube.com') {
+                    videoId = parsedUrl.searchParams.get('v');
+                } else if (parsedUrl.hostname === 'youtu.be') {
+                    videoId = parsedUrl.pathname.slice(1);
+                }
+
+                if (videoId) {
+                    document.getElementById('video-id-display').innerText = `Video ID: ${videoId}`;
+
+                    // Send video ID to backend
+                    const response = await fetch('/summarize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ video_id: videoId }),
+                    });
+
+                    const data = await response.json();
+
+                    const responseDisplay = document.getElementById('response-display');
+
+                    if (data.summary) {
+                        responseDisplay.innerText = data.summary;
+                        responseDisplay.classList.remove('error');
+                    } else if (data.error) {
+                        responseDisplay.innerText = `Error: ${data.error}`;
+                        responseDisplay.classList.add('error');
+                    } else {
+                        responseDisplay.innerText = 'Unexpected response from backend.';
+                        responseDisplay.classList.add('error');
+                    }
+                } else {
+                    document.getElementById('video-id-display').innerText = 'Invalid YouTube URL. Please try again.';
+                }
+            } catch (error) {
+                document.getElementById('response-display').innerText = 'Error processing the URL. Please try again.';
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
